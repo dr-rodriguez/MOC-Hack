@@ -28,7 +28,7 @@ def get_data(sector):
             "AND sequence_number={}".format(sector)
     df = query_db(CAOM_OPS, query)
 
-    df['coords'] = df.apply(lambda x: parse_s_region_polygon(x['s_region']), axis=1)
+    df['coords'] = df.apply(lambda x: parse_s_region(x['s_region']), axis=1)
 
     # Generate MOC
     start_time = time.time()

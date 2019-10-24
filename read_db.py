@@ -29,7 +29,7 @@ query = "SELECT top 1000 * FROM obsPointing WHERE obs_collection='TESS' AND data
 # query = "SELECT obs_id, s_ra, s_dec, s_region FROM obsPointing WITH (NOLOCK) WHERE obs_collection IN ('HST','HLA')"
 df = query_db(CAOM_CONN, query)
 
-df['coords'] = df.apply(lambda x: parse_s_region_polygon(x['s_region']), axis=1)
+df['coords'] = df.apply(lambda x: parse_s_region(x['s_region']), axis=1)
 
 # Generate MOC
 start_time = time.time()
