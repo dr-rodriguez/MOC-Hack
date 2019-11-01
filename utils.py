@@ -40,8 +40,8 @@ def parse_s_region(s_region):
     dec = []
     counter = 0
 
-    if s_region is None or s_region.split()[0].upper() not in ('POLYGON','CIRCLE'):
-        print('Unsupported shape')
+    if s_region is None or s_region.split()[0].upper() not in ('POLYGON', 'CIRCLE'):
+        print('Unsupported shape: {}'.format(s_region))
         return None
 
     if s_region.split()[0].upper() == 'POLYGON':

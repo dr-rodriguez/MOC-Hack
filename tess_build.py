@@ -48,7 +48,7 @@ def get_data(sector):
 
 # Build the MOCs
 moc_list = []
-for s in range(1,16):
+for s in range(1,17):
     print(s)
     moc = get_data(s)
     moc.write('data/tess_S{}_{}.fits'.format(s, MAX_DEPTH), format='fits', overwrite=True)
@@ -90,6 +90,6 @@ for t in moc_list:
     # plt.savefig('figures/tess_S{:04d}.png'.format(int(s)))
 
 
-
-my_plot(moc, frame=Galactic())
+union_moc = MOC.union(*[s[0] for s in moc_list])
+my_plot(union_moc, frame=Galactic(), save='caom_TESS_galactic.png')
 
