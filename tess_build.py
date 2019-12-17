@@ -1,4 +1,6 @@
 # Script to build MOC, one per sector
+import matplotlib
+matplotlib.use('Qt5Agg')  # avoids crashing MacOS Mojave
 import os
 import time
 from mocpy import MOC, WCS
@@ -48,7 +50,7 @@ def get_data(sector):
 
 # Build the MOCs
 moc_list = []
-for s in range(1,17):
+for s in range(17,19):
     print(s)
     moc = get_data(s)
     moc.write('data/tess_S{}_{}.fits'.format(s, MAX_DEPTH), format='fits', overwrite=True)
@@ -61,6 +63,7 @@ for filename in os.listdir('data'):
     if filename.endswith('fits'):
         t = re.findall(r'tess_S(\d+)_', filename)
         s = t[0]
+        if int(s) < 17: continue
         moc = MOC.from_fits(os.path.join('data', filename))
         moc_list.append((moc,s))
 
@@ -68,6 +71,7 @@ for filename in os.listdir('data'):
 # Generate the figure(s)
 for t in moc_list:
     moc, s = t
+    print(s)
 
     my_plot(moc, frame=Galactic(), save='figures/tess_S{:04d}.png'.format(int(s)))
 
