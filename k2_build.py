@@ -2,6 +2,7 @@
 import matplotlib
 matplotlib.use('Qt5Agg')  # avoids crashing MacOS Mojave
 import os
+import re
 from mocpy import MOC, WCS
 import astropy.units as u
 from secrets import CAOM_CONN as CAOM
@@ -22,8 +23,13 @@ def get_polygon_moc(row):
     return temp_moc
 
 
-def get_data():
-    query = "SELECT top 1000 * FROM obsPointing WHERE obs_collection='K2' AND dataproduct_type='image'"
+def get_data(s=None):
+    if s is not None:
+        query = "SELECT top 1000 * FROM obsPointing WHERE obs_collection='K2' AND dataproduct_type='image' " \
+                "AND sequence_number={}".format(s)
+    else:
+        query = "SELECT top 1000 * FROM obsPointing WHERE obs_collection='K2' AND dataproduct_type='image'"
+
     df = query_db(CAOM, query)
     if len(df) == 0:
         return None
@@ -37,7 +43,7 @@ def get_data():
     if len(results) > 1:
         moc = MOC.union(*results)
     else:
-        moc = results
+        moc = results[0]
 
     return moc
 
@@ -50,5 +56,34 @@ moc.write('data/k2/k2_{}.fits'.format(MAX_DEPTH), format='fits', overwrite=True)
 moc = MOC.from_fits(os.path.join('data/k2', 'k2_{}.fits'.format(MAX_DEPTH)))
 
 # Plot MOCs
-my_plot(moc, frame=Galactic(), save='caom_K2_galactic.png', grid=True, labels=True, color='blue')
+my_plot([moc], frame=Galactic(), save='caom_K2_galactic.png', grid=True, axis_labels=True, color='blue')
+
+# Loop over each campaign individually
+moc_list = []
+labels = []
+for s in range(0, 20):
+    print(s)
+    moc = get_data(s)
+    if moc:
+        moc.write('data/k2/k2_c{:02d}_{}.fits'.format(s, MAX_DEPTH), format='fits', overwrite=True)
+        moc_list.append(moc)
+        labels.append(str(s))
+
+# Read individual campaign MOCs
+moc_list = []
+labels = []
+for filename in os.listdir('data/k2'):
+    if filename.endswith('fits'):
+        t = re.findall(r'k2_c(\d+)_', filename)
+        if t:
+            print(filename)
+            s = t[0]
+            moc = MOC.from_fits(os.path.join('data/k2', filename))
+            moc_list.append(moc)
+            labels.append(str(s))
+
+cm = plt.get_cmap('gist_rainbow')
+color_list = [cm(1. * i / len(moc_list)) for i in range(len(moc_list))]
+my_plot(moc_list, frame=Galactic(), save='caom_K2_galactic_ind.png', grid=True, axis_labels=True,
+        color=color_list)
 

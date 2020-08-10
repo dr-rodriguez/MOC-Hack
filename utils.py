@@ -11,6 +11,8 @@ try:
     from astropy_healpix import HEALPix
 except ImportError:
     pass
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.pyplot as plt
 
 
 def query_db(conn, query):
@@ -74,17 +76,16 @@ def parse_s_region(s_region):
     return {'ra': ra, 'dec': dec}
 
 
-def my_plot(moc, frame=None, labels=False, title='', grid=False, save='', color='black', degrade=True):
+def my_plot(moc_list, frame=None, axis_labels=False, title='', grid=False, save='',
+            color='black', degrade=True, labels=None):
     frame = Galactic() if frame is None else frame
+    if frame and not isinstance(frame, BaseCoordinateFrame):
+        raise ValueError("Only Galactic/ICRS coordinate systems are supported.")
 
-    from matplotlib.colors import LinearSegmentedColormap
-    import matplotlib.pyplot as plt
-
-    plot_order = 8
-    if moc.max_order > plot_order and degrade:
-        plotted_moc = moc.degrade_to_order(plot_order)
-    else:
-        plotted_moc = moc
+    # Some initial setup
+    figsize = (12, 10)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="aitoff")
 
     num_pixels_map = 1024
     delta = 2. * np.pi / num_pixels_map
@@ -92,46 +93,61 @@ def my_plot(moc, frame=None, labels=False, title='', grid=False, save='', color=
     x = np.arange(-np.pi, np.pi, delta)
     y = np.arange(-np.pi / 2, np.pi / 2, delta)
     lon_rad, lat_rad = np.meshgrid(x, y)
-    hp = HEALPix(nside=(1 << plotted_moc.max_order), order='nested')
 
-    if frame and not isinstance(frame, BaseCoordinateFrame):
-        raise ValueError("Only Galactic/ICRS coordinate systems are supported.")
+    plot_order = 8  # order to degrade moc resolution to
 
-    pix_map = hp.lonlat_to_healpix(lon_rad * u.rad, lat_rad * u.rad)
+    if not isinstance(color, list):
+        color_list = list(color)*len(moc_list)
+    else:
+        color_list = color
 
-    m = np.zeros(12 * 4 ** (plotted_moc.max_order))
-    pix_id = core.flatten_pixels(plotted_moc._interval_set._intervals, plotted_moc.max_order)
+    # Loop over each moc, converting it accordingly
+    for i, moc in enumerate(moc_list):
+        if moc.max_order > plot_order and degrade:
+            plotted_moc = moc.degrade_to_order(plot_order)
+        else:
+            plotted_moc = moc
 
-    # change the HEALPix cells if the frame of the MOC is not the same as the one associated with the plot method.
-    if isinstance(frame, Galactic):
-        lon, lat = hp.boundaries_lonlat(pix_id, step=2)
-        sky_crd = SkyCoord(lon, lat, unit='deg')
-        pix_id = hp.lonlat_to_healpix(sky_crd.galactic.l, sky_crd.galactic.b)
+        hp = HEALPix(nside=(1 << plotted_moc.max_order), order='nested')
+        pix_map = hp.lonlat_to_healpix(lon_rad * u.rad, lat_rad * u.rad)
+        m = np.zeros(12 * 4 ** (plotted_moc.max_order))
+        pix_id = core.flatten_pixels(plotted_moc._interval_set._intervals, plotted_moc.max_order)
 
-    m[pix_id] = 1
+        # change the HEALPix cells if the frame of the MOC is not the same as the one associated with the plot method.
+        if isinstance(frame, Galactic):
+            lon, lat = hp.boundaries_lonlat(pix_id, step=2)
+            sky_crd = SkyCoord(lon, lat, unit='deg')
+            pix_id = hp.lonlat_to_healpix(sky_crd.galactic.l, sky_crd.galactic.b)
 
-    z = np.flip(m[pix_map], axis=1)
+        m[pix_id] = 1
 
-    figsize = (12, 10)
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(111, projection="aitoff")
+        z = np.flip(m[pix_map], axis=1)
 
-    color_map = LinearSegmentedColormap.from_list('w2r', ['white', color])
-    color_map.set_under('w')
-    color_map.set_bad('w')
+        color_map = LinearSegmentedColormap.from_list('w2r', ['white', color_list[i]])
+        color_map.set_under('w')
+        color_map.set_bad('w')
 
-    # Note I flip x
-    ax.pcolormesh(x, y, z, cmap=color_map, vmin=0, vmax=1)
-    if labels: ax.tick_params(labelsize=14, labelcolor='#000000')
-    if title: plt.title(title)
-    if grid: plt.grid(True, linestyle='--', linewidth=1, color='#555555')
+        # Note I flip x
+        ax.pcolormesh(x, y, z, cmap=color_map, vmin=0, vmax=1)
+
+        # Need to somehow get x/y coordinates passed in
+        # if labels:
+        #     plt.text(lon, lat, labels[i])
+
+    # Plot cleanup
+    if axis_labels:
+        ax.tick_params(labelsize=14, labelcolor='#000000')
+    if title:
+        plt.title(title)
+    if grid:
+        plt.grid(True, linestyle='--', linewidth=1, color='#555555')
 
     ax.set_xticklabels(['210', '240', '270', '300', '330', '0', '30', '60', '90', '120', '150'])
     ax.grid(grid)
 
     plt.tight_layout()
 
-    if not labels:  # disable tick labels
+    if not axis_labels:  # disable tick labels
         ax.set_xticklabels([])
         ax.set_yticklabels([])
 
