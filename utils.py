@@ -74,14 +74,14 @@ def parse_s_region(s_region):
     return {'ra': ra, 'dec': dec}
 
 
-def my_plot(moc, frame=None, labels=False, title='', grid=False, save=''):
+def my_plot(moc, frame=None, labels=False, title='', grid=False, save='', color='black', degrade=True):
     frame = Galactic() if frame is None else frame
 
     from matplotlib.colors import LinearSegmentedColormap
     import matplotlib.pyplot as plt
 
     plot_order = 8
-    if moc.max_order > plot_order:
+    if moc.max_order > plot_order and degrade:
         plotted_moc = moc.degrade_to_order(plot_order)
     else:
         plotted_moc = moc
@@ -95,8 +95,7 @@ def my_plot(moc, frame=None, labels=False, title='', grid=False, save=''):
     hp = HEALPix(nside=(1 << plotted_moc.max_order), order='nested')
 
     if frame and not isinstance(frame, BaseCoordinateFrame):
-        raise ValueError("Only Galactic/ICRS coordinate systems are supported."
-                         "Please set `coord` to either 'C' or 'G'.")
+        raise ValueError("Only Galactic/ICRS coordinate systems are supported.")
 
     pix_map = hp.lonlat_to_healpix(lon_rad * u.rad, lat_rad * u.rad)
 
@@ -117,7 +116,7 @@ def my_plot(moc, frame=None, labels=False, title='', grid=False, save=''):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection="aitoff")
 
-    color_map = LinearSegmentedColormap.from_list('w2r', ['white', 'black'])
+    color_map = LinearSegmentedColormap.from_list('w2r', ['white', color])
     color_map.set_under('w')
     color_map.set_bad('w')
 
